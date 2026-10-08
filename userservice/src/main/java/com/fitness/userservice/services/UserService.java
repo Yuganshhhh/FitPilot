@@ -8,6 +8,12 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service layer containing the business logic for user management.
+ * <p>
+ * Handles user registration, profile retrieval and user existence checks,
+ * and converts {@link User} entities into {@link UserResponse} objects.
+ */
 @Service
 @AllArgsConstructor
 @Slf4j
@@ -15,8 +21,18 @@ public class UserService {
 
     private final UserRepository repository;
 
+    /**
+     * Registers a new user.
+     * <p>
+     * If a user with the same email already exists, that existing user is
+     * returned instead of creating a duplicate.
+     *
+     * @param request the registration details sent by the client
+     * @return the newly created (or already existing) user as a {@link UserResponse}
+     */
     public UserResponse register(RegisterRequest request) {
 
+        // Email already registered: return the existing user instead of creating a new one
         if (repository.existsByEmail(request.getEmail())) {
             User existingUser = repository.findByEmail(request.getEmail());
             UserResponse userResponse = new UserResponse();
@@ -30,6 +46,7 @@ public class UserService {
             return userResponse;
         }
 
+        // New user: map request data to the entity and save it
         User user = new User();
         user.setEmail(request.getEmail());
         user.setFirstName(request.getFirstName());
@@ -50,6 +67,13 @@ public class UserService {
         return userResponse;
     }
 
+    /**
+     * Retrieves a user's profile by their ID.
+     *
+     * @param userId the unique ID of the user
+     * @return the user's profile as a {@link UserResponse}
+     * @throws RuntimeException if no user exists with the given ID
+     */
     public UserResponse getUserProfile(String userId) {
         User user = repository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -65,6 +89,12 @@ public class UserService {
 
     }
 
+    /**
+     * Checks whether a user exists for the given Keycloak ID.
+     *
+     * @param userId the Keycloak ID of the user
+     * @return {@code true} if the user exists, otherwise {@code false}
+     */
     public Boolean existByUserId(String userId) {
         log.info("Calling User Service for {}", userId);
         return repository.existsByKeycloakId(userId);
