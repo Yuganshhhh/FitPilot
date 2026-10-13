@@ -13,7 +13,7 @@ Log a workout → get a personalized AI analysis, improvement areas, next-workou
 ![Keycloak](https://img.shields.io/badge/Keycloak-OAuth2%20%2F%20JWT-4D4D4D?logo=keycloak&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-activities%20%26%20recs-47A248?logo=mongodb&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-users-4169E1?logo=postgresql&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Postman](https://img.shields.io/badge/Postman-API_testing-FF6C37?logo=postman&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Google_Gemini-LLM-8E75B2?logo=googlegemini&logoColor=white)
 
 </div>
@@ -22,7 +22,7 @@ Log a workout → get a personalized AI analysis, improvement areas, next-workou
 
 ## 📌 Overview
 
-FitPilot is a full-stack, **microservices-based** fitness platform. Users sign in through Keycloak, log activities (running, cycling, walking, …) from a React UI, and receive an **AI-generated coaching report** for every workout.
+FitPilot is a **microservices-based** fitness backend. Users authenticate through Keycloak, log activities (running, cycling, walking, …) via a REST API, and receive an **AI-generated coaching report** for every workout. The whole flow can be exercised end-to-end with the included **Postman collection** (a React UI is on the roadmap).
 
 The project is designed to demonstrate production-style backend engineering rather than a single CRUD app:
 
@@ -39,14 +39,14 @@ The project is designed to demonstrate production-style backend engineering rath
 
 ```mermaid
 flowchart LR
-    FE["React + Vite<br/>(PKCE login)"] -->|"Bearer JWT"| GW
+    CL["Postman / API client"] -->|"Bearer JWT"| GW
 
     subgraph Edge
         KC[("Keycloak<br/>realm: fitness-app")]
         GW["API Gateway :8080<br/>JWT validation + user sync"]
     end
 
-    FE -. "OAuth2 Auth Code + PKCE" .-> KC
+    CL -. "OAuth2 Auth Code + PKCE" .-> KC
     GW -. "JWKS" .-> KC
 
     GW -->|"/api/users/**"| US["User Service :8081"]
@@ -68,11 +68,11 @@ flowchart LR
 
 ### Request flow: logging a workout
 
-1. The React app authenticates the user with **Keycloak** (Authorization Code + PKCE) and attaches the JWT to every API call.
+1. The client (Postman) authenticates the user with **Keycloak** (Authorization Code + PKCE) and attaches the JWT to every API call.
 2. The **Gateway** validates the JWT against Keycloak's JWKS endpoint. A custom `WebFilter` (`KeycloakUserSyncFilter`) reads the token claims, checks whether the user exists in the User Service and **auto-registers them on first login**, then forwards the request with an `X-User-ID` header.
 3. The **Activity Service** verifies the user via a synchronous REST call to the User Service (Eureka-resolved, load-balanced), persists the activity to MongoDB, and **publishes it to the `activity-events` Kafka topic** (keyed by `userId`). The HTTP response returns immediately.
 4. The **AI Service** consumes the event, builds a structured prompt, calls **Gemini**, parses the JSON reply into a `Recommendation` and stores it in MongoDB. If the model's output is malformed, a safe default recommendation is stored instead.
-5. The UI fetches the finished recommendation from `/api/recommendations/activity/{id}`.
+5. The client fetches the finished recommendation from `/api/recommendations/activity/{id}` a few seconds later.
 
 > **Why Kafka here?** LLM calls take seconds and can fail. Publishing an event keeps activity logging fast and reliable, lets the AI service scale and retry independently, and makes it easy to add more consumers (e.g. streaks, notifications) later.
 
@@ -82,7 +82,7 @@ flowchart LR
 
 | Area | What it does |
 |---|---|
-| 🔐 **Authentication** | Keycloak OAuth2/OIDC with PKCE on the frontend; stateless JWT resource-server security at the gateway |
+| 🔐 **Authentication** | Keycloak OAuth2/OIDC (Authorization Code + PKCE); stateless JWT resource-server security at the gateway |
 | 👤 **Auto user provisioning** | First authenticated request creates the user profile from JWT claims (`sub`, `email`, `given_name`, `family_name`) |
 | 🏃 **Activity tracking** | Log type, duration, calories burned, start time and free-form extra metrics (stored as a flexible map) |
 | 🤖 **AI coaching** | Per-activity analysis (overall, pace, heart rate, calories), improvement areas, next-workout suggestions and safety tips |
@@ -105,7 +105,7 @@ Supported activity types: `RUNNING`, `WALKING`, `CYCLING`, `SWIMMING`, `WEIGHT_T
 | **Messaging** | Apache Kafka (`spring-kafka`, JSON serialization) |
 | **Databases** | PostgreSQL (users), MongoDB (activities, recommendations) |
 | **GenAI** | Google Gemini API (REST), prompt engineering with a strict JSON schema |
-| **Frontend** | React 19, Vite 7, Material UI, Redux Toolkit, React Router 7, Axios, `react-oauth2-code-pkce` |
+| **API testing** | Postman (OAuth2 PKCE token flow + ready-to-import collection) |
 
 ---
 
@@ -120,7 +120,7 @@ FitPilot/
 ├── userservice/        # User profiles (PostgreSQL / JPA) — :8081
 ├── activityservice/    # Activity CRUD (MongoDB) + Kafka producer — :8082
 ├── aiservice/          # Kafka consumer + Gemini integration + recommendations — :8083
-└── fitness-frontend/   # React SPA (Vite) — :5173
+└── postman/            # Importable Postman collection for the full API flow
 ```
 
 ---
@@ -173,12 +173,51 @@ Content-Type: application/json
 
 ---
 
+## 🧪 Testing with Postman
+
+Import [`postman/FitPilot.postman_collection.json`](postman/FitPilot.postman_collection.json) via **Import** in Postman. It contains one request per endpoint and uses these collection variables:
+
+| Variable | Value |
+|---|---|
+| `baseUrl` | `http://localhost:8080` (the API Gateway) |
+| `token` | Your Keycloak access token (see below) |
+| `userId` | Your Keycloak user ID, i.e. the `sub` claim of the token |
+| `activityId` | Filled in automatically after **Create Activity** |
+
+### 1. Get an access token
+
+Open the collection → **Authorization** tab → type **OAuth 2.0** and fill in:
+
+| Field | Value |
+|---|---|
+| Grant type | Authorization Code (With PKCE) |
+| Callback URL | `https://oauth.pstmn.io/v1/callback` |
+| Auth URL | `http://localhost:8181/realms/fitness-app/protocol/openid-connect/auth` |
+| Access Token URL | `http://localhost:8181/realms/fitness-app/protocol/openid-connect/token` |
+| Client ID | `oauth2-pkce-client` |
+| Code Challenge Method | SHA-256 |
+| Scope | `openid profile email` |
+
+Click **Get New Access Token**, log in as your Keycloak test user, then **Use Token**. (Alternatively, paste a token into the `token` variable and keep the collection on Bearer auth.)
+
+The first authenticated call auto-registers you in the User Service, so no manual sign-up request is needed.
+
+### 2. Run the flow
+
+1. **Create Activity** (`POST /api/activities`) saves the activity and publishes the Kafka event. The response contains the new `id`, which the collection stores as `activityId`.
+2. Wait a few seconds while the AI Service calls Gemini in the background.
+3. **Get Recommendation for Activity** (`GET /api/recommendations/activity/{{activityId}}`) returns the AI analysis, improvements, suggestions and safety tips.
+4. Try **List My Activities**, **Get My Recommendations** and **Get User Profile** for the other endpoints.
+
+> If the recommendation call returns an error right after creating an activity, the AI Service has not finished yet. Retry in a few seconds.
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
 
 - **JDK 24** and **Maven** (each service ships with the Maven wrapper)
-- **Node.js 18+** and npm
 - **PostgreSQL** (default `localhost:5432`)
 - **MongoDB** (default `localhost:27017`)
 - **Apache Kafka** (default `localhost:9092`)
@@ -201,8 +240,8 @@ cd FitPilot
 2. Create a realm named **`fitness-app`**.
 3. Create a public client **`oauth2-pkce-client`** with:
    - Standard flow enabled, PKCE (S256) required
-   - Valid redirect URI: `http://localhost:5173`
-   - Web origin: `http://localhost:5173`
+   - Valid redirect URI: `https://oauth.pstmn.io/v1/callback` (Postman)
+   - Web origins: `+` (or `https://oauth.pstmn.io`)
 4. Create a test user (set email, first and last name).
 
 </details>
@@ -256,18 +295,14 @@ cd aiservice       && ./mvnw spring-boot:run   # :8083  (needs GEMINI_URL / GEMI
 
 # 4. API Gateway    (:8080)
 cd gateway && ./mvnw spring-boot:run
-
-# 5. Frontend       (:5173)
-cd fitness-frontend && npm install && npm run dev
 ```
 
-Open **http://localhost:5173**, log in with your Keycloak user, add an activity, and open it to see the AI report.
+Then follow [Testing with Postman](#-testing-with-postman) to log in, add an activity and read the AI report.
 
 ### Ports at a glance
 
 | Component | Port |
 |---|---|
-| Frontend (Vite) | 5173 |
 | API Gateway | 8080 |
 | User Service | 8081 |
 | Activity Service | 8082 |
@@ -297,10 +332,8 @@ Open **http://localhost:5173**, log in with your Keycloak user, add an activity,
 - [ ] Integration tests with Testcontainers (Kafka, MongoDB, PostgreSQL)
 - [ ] Gateway-level check that `X-User-ID` matches the JWT `sub` claim
 - [ ] Hash/omit the placeholder password and drop it from API responses (identity is owned by Keycloak)
-- [ ] Polling / WebSocket updates in the UI when a recommendation becomes ready
 - [ ] Spring AI migration for provider-agnostic LLM access and structured output
 - [ ] Observability: Micrometer, distributed tracing, centralized logging
-- [ ] CI pipeline (GitHub Actions) and containerized deployment
 
 ---
 
@@ -309,7 +342,7 @@ Open **http://localhost:5173**, log in with your Keycloak user, add an activity,
 **Yugansh Sharma** — Final-year B.Tech CSE student focused on AI engineering (Java, Spring Boot, microservices) and applied GenAI.
 
 [![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/Yuganshhhh)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://linkedin.com/)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/yugansh-sharma-097740301/)
 [![Email](https://img.shields.io/badge/Email-yugansh2511%40gmail.com-D14836?logo=gmail&logoColor=white)](mailto:yugansh2511@gmail.com)
 
 *Open to AI / backend engineering roles and internships.*
