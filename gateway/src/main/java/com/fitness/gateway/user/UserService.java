@@ -32,6 +32,9 @@ public class UserService {
     }
 
     public Mono<UserResponse> registerUser(RegisterRequest registerRequest) {
+
+        // Creates the user in User Service using details extracted from the Keycloak JWT.
+        // A 400 response becomes "Bad request"; any other error becomes "Unexpected error".
         log.info("Calling User Registration for {}", registerRequest.getEmail());
         return userServiceWebClient.post()
                 .uri("/api/users/register")
