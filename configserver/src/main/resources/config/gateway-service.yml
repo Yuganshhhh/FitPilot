@@ -14,6 +14,10 @@ spring:
       server:
         webflux:
           routes:
+          # Each route forwards through Eureka (lb://) to a service, matched by URL path:
+          #   /api/users/**           -> USER-SERVICE
+          #   /api/activities/**      -> ACTIVITY-SERVICE
+          #   /api/recommendations/** -> AI-SERVICE
             - id: user-service
               uri: lb://USER-SERVICE
               predicates:
