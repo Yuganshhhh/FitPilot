@@ -24,6 +24,11 @@ public class KeycloakUserSyncFilter implements WebFilter {
     
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+        
+        // Runs on every request: reads user details from the JWT and, if the user is not yet
+        // in User Service, registers them automatically before forwarding the request.
+        // The resolved user id is passed downstream in the X-User-ID header.
+        
         String userId = exchange.getRequest().getHeaders().getFirst("X-User-ID");
         String token = exchange.getRequest().getHeaders().getFirst("Authorization");
         RegisterRequest registerRequest = getUserDetails(token);
