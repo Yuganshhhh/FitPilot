@@ -11,6 +11,8 @@ public class WebClientConfig {
     @Bean
     @LoadBalanced
     public WebClient.Builder webClientBuilder() {
+        // @LoadBalanced lets WebClient resolve service names such as USER-SERVICE
+        // through Eureka instead of using a fixed host and port.
         return WebClient.builder();
     }
 
