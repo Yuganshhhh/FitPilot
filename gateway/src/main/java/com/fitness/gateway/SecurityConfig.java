@@ -19,6 +19,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        // Every route requires a valid JWT issued by Keycloak (verified via the jwk-set-uri in config server).
+        // CSRF is disabled because the gateway is stateless and uses bearer tokens, not cookies.
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchange -> exchange.anyExchange().authenticated())
