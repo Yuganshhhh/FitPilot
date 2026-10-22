@@ -33,6 +33,8 @@ public class UserValidationService {
                     .bodyToMono(Boolean.class)
                     .block();
         } catch (WebClientResponseException e) {
+
+            // HTTP errors from User Service are only printed here; the method then returns false (invalid user).
             e.printStackTrace();
         }
         return false;
