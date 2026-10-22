@@ -40,6 +40,8 @@ public class UserController {
      */
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
+        
+        // Called by the gateway's KeycloakUserSyncFilter the first time a Keycloak user makes a request.
         return ResponseEntity.ok(userService.register(request));
     }
 
