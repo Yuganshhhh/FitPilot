@@ -18,6 +18,8 @@ public class ActivityController {
 
     @PostMapping
     public ResponseEntity<ActivityResponse> trackActivity(@RequestBody ActivityRequest request, @RequestHeader("X-User-ID") String userId) {
+
+        // X-User-ID is set by the gateway (from the JWT) and overrides any userId sent in the request body.
         request.setUserId(userId);
         return ResponseEntity.ok(activityService.trackActivity(request));
     }
@@ -25,6 +27,8 @@ public class ActivityController {
 
     @GetMapping
     public ResponseEntity<List<ActivityResponse>> getUserActivities(@RequestHeader("X-User-ID") String userId) {
+
+        // Returns only the activities belonging to the user identified by the X-User-ID header.
         return ResponseEntity.ok(activityService.getUserActivities(userId));
     }
 }
