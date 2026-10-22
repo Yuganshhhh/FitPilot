@@ -41,6 +41,7 @@ public class ActivityService {
      * @throws RuntimeException if the user id is not valid
      */
     public ActivityResponse trackActivity(ActivityRequest request) {
+        // Reject activities from users unknown to User Service before anything is saved.
 
         boolean isValidUser = userValidationService.validateUser(request.getUserId());
 
@@ -61,6 +62,8 @@ public class ActivityService {
 
         // Publish to Kafka; a failure here is logged but does not fail the request
         try {
+
+            // The userId is used as the Kafka message key, so one user's events go to the same partition in order.
             kafkaTemplate.send(topicName, savedActivity.getUserId(), savedActivity);
         } catch (Exception e) {
             e.printStackTrace();
