@@ -75,6 +75,8 @@ public class UserService {
      * @throws RuntimeException if no user exists with the given ID
      */
     public UserResponse getUserProfile(String userId) {
+
+        // Looks up by the database id (findById); existByUserId below uses the Keycloak id instead.
         User user = repository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         UserResponse userResponse = new UserResponse();
@@ -96,6 +98,9 @@ public class UserService {
      * @return {@code true} if the user exists, otherwise {@code false}
      */
     public Boolean existByUserId(String userId) {
+
+        // Backs the /validate endpoint. The gateway calls it to decide whether the user
+        // still needs to be registered.
         log.info("Calling User Service for {}", userId);
         return repository.existsByKeycloakId(userId);
     }
