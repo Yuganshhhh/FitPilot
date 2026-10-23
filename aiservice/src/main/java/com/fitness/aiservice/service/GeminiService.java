@@ -32,6 +32,8 @@ public class GeminiService {
      * @param webClientBuilder Spring-provided builder for creating the WebClient
      */
     public GeminiService(WebClient.Builder webClientBuilder) {
+
+        // No base URL is set here; the full Gemini URL is passed to .uri() on every call.
         this.webClient = webClientBuilder.build();
     }
 
