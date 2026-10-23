@@ -29,6 +29,8 @@ public class RecommendationController {
      */
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Recommendation>> getUserRecommendation(@PathVariable String userId) {
+
+        // Returns every recommendation saved for this user (reached through the gateway at /api/recommendations/**).
         return ResponseEntity.ok(recommendationService.getUserRecommendation(userId));
     }
 
@@ -40,6 +42,8 @@ public class RecommendationController {
      */
     @GetMapping("/activity/{activityId}")
     public ResponseEntity<Recommendation> getActivityRecommendation(@PathVariable String activityId) {
+
+        // Recommendations are created asynchronously from Kafka events, so a very recent activity may not have one yet.
         return ResponseEntity.ok(recommendationService.getActivityRecommendation(activityId));
     }
 }
