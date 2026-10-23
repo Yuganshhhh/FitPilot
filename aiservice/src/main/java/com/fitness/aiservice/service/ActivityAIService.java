@@ -222,6 +222,9 @@ public class ActivityAIService {
      * @return the complete prompt text
      */
     private String createPromptForActivity(Activity activity) {
+
+        // Text block with %s / %d placeholders, filled from the activity (type, duration,
+        // calories, additional metrics) by the String.format arguments at the bottom.
         return String.format("""
         Analyze this fitness activity and provide detailed recommendations in the following EXACT JSON format:
         {
