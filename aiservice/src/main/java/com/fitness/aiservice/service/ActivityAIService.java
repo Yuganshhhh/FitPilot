@@ -137,6 +137,8 @@ public class ActivityAIService {
      * @return list of safety guidelines, or a generic one if none were provided
      */
     private List<String> extractSafetyGuidelines(JsonNode safetyNode) {
+
+        // If the node is missing or not an array, a generic default is returned so the list is never empty.
         List<String> safety = new ArrayList<>();
         if (safetyNode.isArray()) {
             safetyNode.forEach(item -> safety.add(item.asText()));
@@ -175,6 +177,8 @@ public class ActivityAIService {
      * @return list of formatted improvements, or a placeholder if none were provided
      */
     private List<String> extractImprovements(JsonNode improvementsNode) {
+
+        // Same pattern as extractSafetyGuidelines and extractSuggestions: an empty or missing array falls back to a placeholder.
         List<String> improvements = new ArrayList<>();
         if (improvementsNode.isArray()) {
             improvementsNode.forEach(improvement -> {
