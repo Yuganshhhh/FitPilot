@@ -34,6 +34,9 @@ public class ActivityMessageListener {
      */
     @KafkaListener(topics = "${kafka.topic.name}", groupId = "activity-processor-group")
     public void processActivity(Activity activity) {
+
+        // Spring Kafka calls this once for each message published to the topic.
+       // If recommendation generation throws, nothing is saved for that activity.
         log.info("Received Activity for processing: {}", activity.getUserId());
         // Generate AI recommendation and persist it
         Recommendation recommendation = activityAIService.generateRecommendation(activity);
