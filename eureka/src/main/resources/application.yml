@@ -4,6 +4,7 @@ spring:
 
 eureka:
   client:
+  # This app is the registry itself, so it neither registers with Eureka nor fetches the registry (standalone mode).
     register-with-eureka: false
     fetch-registry: false
 
