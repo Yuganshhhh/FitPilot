@@ -3,6 +3,7 @@ spring:
     name: configserver
   profiles:
     active: native
+    # "native" profile: configs are read from this app's own classpath (src/main/resources/config), not from Git.
   cloud:
     config:
       server:
